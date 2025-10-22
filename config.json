@@ -1,0 +1,16 @@
+{
+  "port": 8080,
+  "health_check_path": "/health",
+  "health_check_interval_seconds": 10,
+  "backends": [
+    {
+      "url": "http://localhost:8081"
+    },
+    {
+      "url": "http://localhost:8082"
+    },
+    {
+      "url": "http://localhost:8083"
+    }
+  ]
+}
