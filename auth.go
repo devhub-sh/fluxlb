@@ -28,10 +28,10 @@ func NewAuthManager(config *AuthConfig) *AuthManager {
 		config:   config,
 		sessions: make(map[string]*Session),
 	}
-	
+
 	// Start session cleanup routine
 	go am.cleanupExpiredSessions()
-	
+
 	return am
 }
 
@@ -47,7 +47,7 @@ func (am *AuthManager) Login(username, password string) (string, error) {
 
 	// Generate session token
 	token := am.generateToken()
-	
+
 	am.mu.Lock()
 	am.sessions[token] = &Session{
 		Token:     token,

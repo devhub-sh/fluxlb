@@ -55,34 +55,34 @@ func (lb *LoadBalancer) Start(ctx context.Context) {
 func (lb *LoadBalancer) GetNextBackend() *Backend {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
-	
+
 	if len(lb.backends) == 0 {
 		return nil
 	}
-	
+
 	// Find the backend with the smallest time quanta and active connections
 	var bestBackend *Backend
 	var bestScore float64 = -1
-	
+
 	for _, backend := range lb.backends {
 		if !backend.IsAlive() {
 			continue
 		}
-		
+
 		// Calculate score: lower is better
 		// Score = (time_quanta * connections) + avg_latency
 		timeQuanta := float64(backend.GetTimeQuanta().Nanoseconds())
 		connections := float64(backend.GetActiveConnections())
 		avgLatency := float64(backend.GetMertics().AvgLatency.Nanoseconds())
-		
+
 		score := (timeQuanta * (1 + connections)) + avgLatency
-		
+
 		if bestBackend == nil || score < bestScore {
 			bestBackend = backend
 			bestScore = score
 		}
 	}
-	
+
 	// Fallback to simple round-robin if all backends are down
 	if bestBackend == nil {
 		for i := 0; i < len(lb.backends); i++ {
@@ -97,7 +97,7 @@ func (lb *LoadBalancer) GetNextBackend() *Backend {
 			return lb.backends[0]
 		}
 	}
-	
+
 	return bestBackend
 }
 
@@ -126,7 +126,7 @@ func (lb *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (lb *LoadBalancer) GetMetrics() []BackendMetrics {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
-	
+
 	metrics := make([]BackendMetrics, 0, len(lb.backends))
 	for _, backend := range lb.backends {
 		metrics = append(metrics, backend.GetMertics())
@@ -140,14 +140,14 @@ func (lb *LoadBalancer) AddBackend(urlStr string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create backend %s: %w", urlStr, err)
 	}
-	
+
 	lb.mu.Lock()
 	lb.backends = append(lb.backends, backend)
 	lb.mu.Unlock()
-	
+
 	// Add to health checker
 	lb.healthChecker.AddBackend(backend)
-	
+
 	log.Printf("Added backend: %s", urlStr)
 	return nil
 }
@@ -156,20 +156,20 @@ func (lb *LoadBalancer) AddBackend(urlStr string) error {
 func (lb *LoadBalancer) RemoveBackend(urlStr string) error {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
-	
+
 	for i, backend := range lb.backends {
 		if backend.URL.String() == urlStr {
 			// Remove from backends slice
 			lb.backends = append(lb.backends[:i], lb.backends[i+1:]...)
-			
+
 			// Remove from health checker
 			lb.healthChecker.RemoveBackend(backend)
-			
+
 			log.Printf("Removed backend: %s", urlStr)
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("backend not found: %s", urlStr)
 }
 
@@ -177,7 +177,7 @@ func (lb *LoadBalancer) RemoveBackend(urlStr string) error {
 func (lb *LoadBalancer) GetBackends() []*Backend {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
-	
+
 	backends := make([]*Backend, len(lb.backends))
 	copy(backends, lb.backends)
 	return backends

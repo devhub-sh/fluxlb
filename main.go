@@ -70,11 +70,18 @@ func main() {
 			* using smart round-robin algorithm
 	*/
 	mux := http.NewServeMux()
-	
+
+	// Serve React static files if available
+	reactBuildPath := "frontend/build"
+	if _, err := os.Stat(reactBuildPath); err == nil {
+		fs := http.FileServer(http.Dir(reactBuildPath))
+		mux.Handle("/static/", fs)
+	}
+
 	// Public endpoints
 	mux.HandleFunc("/api/login", apiHandler.HandleLogin)
 	mux.HandleFunc("/health", HealthCheckHandler)
-	
+
 	// Protected endpoints
 	mux.HandleFunc("/dashboard", authManager.AuthMiddleware(dashboard.ServeHTTP))
 	mux.HandleFunc("/api/metrics", authManager.AuthMiddleware(dashboard.ServeMetricsAPI))
@@ -82,10 +89,10 @@ func main() {
 	mux.HandleFunc("/api/backends/add", authManager.AuthMiddleware(apiHandler.HandleAddBackend))
 	mux.HandleFunc("/api/backends/remove", authManager.AuthMiddleware(apiHandler.HandleRemoveBackend))
 	mux.HandleFunc("/api/backends", authManager.AuthMiddleware(apiHandler.HandleGetBackends))
-	
+
 	// Load balancer proxy (unprotected for actual traffic)
 	mux.HandleFunc("/", lb.ServeHTTP)
-	
+
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", config.Port),
 		Handler:      mux,
@@ -102,12 +109,12 @@ func main() {
 		if config.EnableHTTPS {
 			log.Printf("FluxLB HTTPS listening on https://localhost:%d", config.HTTPSPort)
 			log.Printf("Dashboard available at https://localhost:%d/dashboard", config.HTTPSPort)
-			
+
 			// Create TLS config
 			tlsConfig := &tls.Config{
 				MinVersion: tls.VersionTLS12,
 			}
-			
+
 			httpsServer := &http.Server{
 				Addr:         fmt.Sprintf(":%d", config.HTTPSPort),
 				Handler:      mux,
@@ -116,7 +123,7 @@ func main() {
 				WriteTimeout: 30 * time.Second,
 				IdleTimeout:  60 * time.Second,
 			}
-			
+
 			if err := httpsServer.ListenAndServeTLS(config.CertFile, config.KeyFile); err != nil && err != http.ErrServerClosed {
 				log.Printf("HTTPS Server Error: %v", err)
 			}

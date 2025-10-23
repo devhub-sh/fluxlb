@@ -27,7 +27,7 @@ type Backend struct {
 	StartTime         time.Time
 	ActiveConnections int64
 	LastRequestTime   time.Time
-	
+
 	// Time quanta for scheduling (average processing time)
 	TimeQuanta time.Duration
 }
@@ -95,7 +95,7 @@ func (b *Backend) AddRequest(latency time.Duration) {
 	b.RequestCount++
 	b.TotalLatency += latency
 	b.LastRequestTime = time.Now()
-	
+
 	// Update time quanta (exponential moving average)
 	if b.TimeQuanta == 0 {
 		b.TimeQuanta = latency
@@ -128,7 +128,7 @@ func (b *Backend) GetMertics() BackendMetrics {
 	if b.RequestCount > 0 {
 		avgLatency = b.TotalLatency / time.Duration(b.RequestCount)
 	}
-	
+
 	// Calculate requests per second
 	var reqPerSec float64
 	if uptime.Seconds() > 0 {
@@ -151,7 +151,7 @@ func (b *Backend) GetMertics() BackendMetrics {
 func (b *Backend) GetTimeQuanta() time.Duration {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	
+
 	if b.TimeQuanta == 0 {
 		return time.Millisecond * 100 // Default
 	}
