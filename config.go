@@ -9,9 +9,21 @@ import (
 // Config represents the load balancer configuration
 type Config struct {
 	Port                int             `json:"port"`
+	HTTPSPort           int             `json:"https_port"`
+	EnableHTTPS         bool            `json:"enable_https"`
+	CertFile            string          `json:"cert_file"`
+	KeyFile             string          `json:"key_file"`
 	HealthCheckPath     string          `json:"health_check_path"`
 	HealthCheckInterval time.Duration   `json:"health_check_interval_seconds"`
+	Auth                AuthConfig      `json:"auth"`
 	Backends            []BackendConfig `json:"backends"`
+}
+
+// AuthConfig represents authentication configuration
+type AuthConfig struct {
+	Enabled  bool   `json:"enabled"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 // BackendConfig represents a backend server configuration

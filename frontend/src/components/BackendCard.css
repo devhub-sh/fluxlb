@@ -1,0 +1,96 @@
+.backend-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.backend-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+}
+
+.backend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.backend-url {
+  font-weight: bold;
+  font-size: 1.1em;
+  color: #667eea;
+  word-break: break-all;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.status {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85em;
+  font-weight: bold;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-up {
+  background-color: #10b981;
+  color: white;
+}
+
+.status-down {
+  background-color: #ef4444;
+  color: white;
+}
+
+.metrics {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.metric-label {
+  color: #666;
+  font-weight: 500;
+  font-size: 0.95em;
+}
+
+.metric-value {
+  font-weight: bold;
+  color: #333;
+  font-size: 0.95em;
+}
+
+.backend-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.remove-btn {
+  padding: 8px 16px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.remove-btn:hover {
+  background-color: #dc2626;
+}
