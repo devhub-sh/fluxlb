@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"time"
 )
@@ -349,6 +350,7 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	if err := d.dashboardTmpl.Execute(w, views); err != nil {
+		log.Printf("Error rendering dashboard: %v", err)
 		http.Error(w, "Error rendering dashboard", http.StatusInternalServerError)
 	}
 }
@@ -357,6 +359,7 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (d *Dashboard) ServeLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	if err := d.loginTmpl.Execute(w, nil); err != nil {
+		log.Printf("Error rendering login page: %v", err)
 		http.Error(w, "Error rendering login page", http.StatusInternalServerError)
 	}
 }
