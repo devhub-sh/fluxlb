@@ -116,6 +116,7 @@ const loginHTML = `
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ username, password })
                 });
                 const data = await response.json();
@@ -347,13 +348,17 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	d.dashboardTmpl.Execute(w, views)
+	if err := d.dashboardTmpl.Execute(w, views); err != nil {
+		http.Error(w, "Error rendering dashboard", http.StatusInternalServerError)
+	}
 }
 
 // ServeLogin handles login page requests
 func (d *Dashboard) ServeLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	d.loginTmpl.Execute(w, nil)
+	if err := d.loginTmpl.Execute(w, nil); err != nil {
+		http.Error(w, "Error rendering login page", http.StatusInternalServerError)
+	}
 }
 
 // ServeMetricsAPI serves metrics as JSON
