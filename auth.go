@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -94,7 +95,12 @@ func (am *AuthManager) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// Check for session cookie
 		cookie, err := r.Cookie("session_token")
 		if err != nil || !am.ValidateSession(cookie.Value) {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			// Redirect to login for HTML requests, return 401 for API requests
+			if r.Header.Get("Accept") == "application/json" || strings.HasPrefix(r.URL.Path, "/api/") {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 
