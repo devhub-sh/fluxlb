@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -157,8 +159,10 @@ const dashboardHTML = `
 
 // Dashboard provides the web dashboard for monitoring
 type Dashboard struct {
-	lb       *LoadBalancer
-	template *template.Template
+	lb         *LoadBalancer
+	template   *template.Template
+	reactBuild string
+	useReact   bool
 }
 
 // NewDashboard creates a new dashboard instance
@@ -168,9 +172,18 @@ func NewDashboard(lb *LoadBalancer) (*Dashboard, error) {
 		return nil, err
 	}
 
+	// Check if React build exists
+	reactBuildPath := "frontend/build"
+	useReact := false
+	if _, err := os.Stat(reactBuildPath); err == nil {
+		useReact = true
+	}
+
 	return &Dashboard{
-		lb:       lb,
-		template: tmpl,
+		lb:         lb,
+		template:   tmpl,
+		reactBuild: reactBuildPath,
+		useReact:   useReact,
 	}, nil
 }
 
@@ -185,6 +198,13 @@ type MetricsView struct {
 
 // ServeHTTP handles dashboard requests
 func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// If React build exists, serve it
+	if d.useReact {
+		d.serveReactApp(w, r)
+		return
+	}
+
+	// Fallback to legacy HTML dashboard
 	metrics := d.lb.GetMetrics()
 
 	views := make([]MetricsView, 0, len(metrics))
@@ -201,6 +221,13 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	d.template.Execute(w, views)
+}
+
+// serveReactApp serves the React application
+func (d *Dashboard) serveReactApp(w http.ResponseWriter, r *http.Request) {
+	// Serve index.html for all routes
+	indexPath := filepath.Join(d.reactBuild, "index.html")
+	http.ServeFile(w, r, indexPath)
 }
 
 // ServeMetricsAPI serves metrics as JSON

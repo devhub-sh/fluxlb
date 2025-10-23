@@ -1,7 +1,16 @@
 {
   "port": 8080,
+  "https_port": 8443,
+  "enable_https": false,
+  "cert_file": "certs/server.crt",
+  "key_file": "certs/server.key",
   "health_check_path": "/health",
   "health_check_interval_seconds": 10,
+  "auth": {
+    "enabled": true,
+    "username": "admin",
+    "password": "admin123"
+  },
   "backends": [
     {
       "url": "http://localhost:8081"

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -14,6 +15,7 @@ type HealthChecker struct {
 	backends []*Backend
 	path     string
 	interval time.Duration
+	mu       sync.RWMutex
 }
 
 /*
@@ -49,14 +51,50 @@ func (hc *HealthChecker) Start(ctx context.Context) {
 
 // checkAll checks the health of all backends
 func (hc *HealthChecker) checkAll() {
-	for _, backend := range hc.backends {
+	hc.mu.RLock()
+	backends := make([]*Backend, len(hc.backends))
+	copy(backends, hc.backends)
+	hc.mu.RUnlock()
+
+	for _, backend := range backends {
 		go hc.check(backend)
+	}
+}
+
+// AddBackend adds a backend to the health checker
+func (hc *HealthChecker) AddBackend(backend *Backend) {
+	hc.mu.Lock()
+	hc.backends = append(hc.backends, backend)
+	hc.mu.Unlock()
+
+	// Perform immediate health check
+	go hc.check(backend)
+}
+
+// RemoveBackend removes a backend from the health checker
+func (hc *HealthChecker) RemoveBackend(backend *Backend) {
+	hc.mu.Lock()
+	defer hc.mu.Unlock()
+
+	for i, b := range hc.backends {
+		if b == backend {
+			hc.backends = append(hc.backends[:i], hc.backends[i+1:]...)
+			return
+		}
 	}
 }
 
 // check performs a health check on a single backend
 func (hc *HealthChecker) check(backend *Backend) {
 	url := backend.URL.String() + hc.path
+	
+	// Validate URL scheme to prevent SSRF attacks
+	if backend.URL.Scheme != "http" && backend.URL.Scheme != "https" {
+		backend.SetAlive(false)
+		log.Printf("Backend %s has invalid scheme: %s", backend.URL.String(), backend.URL.Scheme)
+		return
+	}
+	
 	client := &http.Client{
 		Timeout: 5 * time.Second,
 	}
