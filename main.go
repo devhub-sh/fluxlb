@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 )
@@ -72,16 +71,8 @@ func main() {
 	*/
 	mux := http.NewServeMux()
 
-	// Serve React static files if available (only the static subdirectory)
-	reactBuildPath := "frontend/build"
-	reactStaticPath := filepath.Join(reactBuildPath, "static")
-	if _, err := os.Stat(reactStaticPath); err == nil {
-		fs := http.FileServer(http.Dir(reactBuildPath))
-		// Only serve /static/ paths from the React build
-		mux.Handle("/static/", http.StripPrefix("/", fs))
-	}
-
 	// Public endpoints
+	mux.HandleFunc("/login", dashboard.ServeLogin)
 	mux.HandleFunc("/api/login", apiHandler.HandleLogin)
 	mux.HandleFunc("/health", HealthCheckHandler)
 

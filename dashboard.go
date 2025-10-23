@@ -5,10 +5,134 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 )
+
+const loginHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxLB Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .login-container {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .error {
+            color: #ef4444;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .hint {
+            text-align: center;
+            color: #999;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>🚀 FluxLB</h1>
+        <p class="subtitle">Load Balancer Dashboard</p>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit">Login</button>
+            <div id="error" class="error"></div>
+        </form>
+        <p class="hint">Default: admin / admin123</p>
+    </div>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = '/dashboard';
+                } else {
+                    errorDiv.textContent = data.message || 'Login failed';
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Connection error. Please try again.';
+            }
+        });
+    </script>
+</body>
+</html>
+`
 
 const dashboardHTML = `
 <!DOCTYPE html>
@@ -19,7 +143,7 @@ const dashboardHTML = `
     <title>FluxLB Dashboard</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -29,12 +153,27 @@ const dashboardHTML = `
             max-width: 1200px;
             margin: 0 auto;
         }
-        h1 {
-            text-align: center;
-            color: white;
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 30px;
-            font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: white;
+            margin: 0;
+        }
+        .logout-btn {
+            padding: 10px 20px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .logout-btn:hover {
+            background: #f0f0f0;
         }
         .backend-grid {
             display: grid;
@@ -43,84 +182,85 @@ const dashboardHTML = `
         }
         .backend-card {
             background: white;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
-        }
-        .backend-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 12px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .backend-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
         }
         .backend-url {
             font-weight: bold;
-            font-size: 1.1em;
             color: #667eea;
             word-break: break-all;
         }
         .status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
             font-weight: bold;
-            text-transform: uppercase;
         }
         .status-up {
-            background-color: #10b981;
+            background: #10b981;
             color: white;
         }
         .status-down {
-            background-color: #ef4444;
+            background: #ef4444;
             color: white;
-        }
-        .metrics {
-            display: grid;
-            gap: 12px;
         }
         .metric {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
+            padding: 5px 0;
         }
         .metric-label {
             color: #666;
-            font-weight: 500;
         }
         .metric-value {
             font-weight: bold;
-            color: #333;
         }
         .refresh-info {
             text-align: center;
             color: white;
             margin-top: 20px;
-            font-size: 0.9em;
         }
     </style>
     <script>
         function refreshDashboard() {
             fetch('/api/metrics')
-                .then(response => response.json())
+                .then(response => {
+                    if (response.status === 401) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    location.reload();
+                    if (data) location.reload();
                 });
         }
 
-        // Auto-refresh every 5 seconds
+        function logout() {
+            fetch('/api/logout', { method: 'POST' })
+                .then(() => {
+                    window.location.href = '/login';
+                });
+        }
+
         setInterval(refreshDashboard, 5000);
     </script>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 FluxLB Dashboard</h1>
+        <div class="header">
+            <h1>🚀 FluxLB Dashboard</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
         <div class="backend-grid">
             {{range .}}
             <div class="backend-card">
@@ -132,19 +272,17 @@ const dashboardHTML = `
                     <span class="status status-down">DOWN</span>
                     {{end}}
                 </div>
-                <div class="metrics">
-                    <div class="metric">
-                        <span class="metric-label">📊 Requests</span>
-                        <span class="metric-value">{{.RequestCount}}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">⚡ Avg Latency</span>
-                        <span class="metric-value">{{.AvgLatencyMs}}</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">⏱️ Uptime</span>
-                        <span class="metric-value">{{.UptimeStr}}</span>
-                    </div>
+                <div class="metric">
+                    <span class="metric-label">Requests</span>
+                    <span class="metric-value">{{.RequestCount}}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Avg Latency</span>
+                    <span class="metric-value">{{.AvgLatencyMs}}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Uptime</span>
+                    <span class="metric-value">{{.UptimeStr}}</span>
                 </div>
             </div>
             {{end}}
@@ -159,31 +297,27 @@ const dashboardHTML = `
 
 // Dashboard provides the web dashboard for monitoring
 type Dashboard struct {
-	lb         *LoadBalancer
-	template   *template.Template
-	reactBuild string
-	useReact   bool
+	lb             *LoadBalancer
+	dashboardTmpl  *template.Template
+	loginTmpl      *template.Template
 }
 
 // NewDashboard creates a new dashboard instance
 func NewDashboard(lb *LoadBalancer) (*Dashboard, error) {
-	tmpl, err := template.New("dashboard").Parse(dashboardHTML)
+	dashboardTmpl, err := template.New("dashboard").Parse(dashboardHTML)
 	if err != nil {
 		return nil, err
 	}
 
-	// Check if React build exists
-	reactBuildPath := "frontend/build"
-	useReact := false
-	if _, err := os.Stat(reactBuildPath); err == nil {
-		useReact = true
+	loginTmpl, err := template.New("login").Parse(loginHTML)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Dashboard{
-		lb:         lb,
-		template:   tmpl,
-		reactBuild: reactBuildPath,
-		useReact:   useReact,
+		lb:            lb,
+		dashboardTmpl: dashboardTmpl,
+		loginTmpl:     loginTmpl,
 	}, nil
 }
 
@@ -198,13 +332,6 @@ type MetricsView struct {
 
 // ServeHTTP handles dashboard requests
 func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// If React build exists, serve it
-	if d.useReact {
-		d.serveReactApp(w, r)
-		return
-	}
-
-	// Fallback to legacy HTML dashboard
 	metrics := d.lb.GetMetrics()
 
 	views := make([]MetricsView, 0, len(metrics))
@@ -220,14 +347,13 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	d.template.Execute(w, views)
+	d.dashboardTmpl.Execute(w, views)
 }
 
-// serveReactApp serves the React application
-func (d *Dashboard) serveReactApp(w http.ResponseWriter, r *http.Request) {
-	// Serve index.html for all routes
-	indexPath := filepath.Join(d.reactBuild, "index.html")
-	http.ServeFile(w, r, indexPath)
+// ServeLogin handles login page requests
+func (d *Dashboard) ServeLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	d.loginTmpl.Execute(w, nil)
 }
 
 // ServeMetricsAPI serves metrics as JSON

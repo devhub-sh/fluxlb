@@ -94,7 +94,17 @@ func (am *AuthManager) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// Check for session cookie
 		cookie, err := r.Cookie("session_token")
 		if err != nil || !am.ValidateSession(cookie.Value) {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			// Redirect to login for HTML requests, return 401 for API requests
+			if r.Header.Get("Accept") == "application/json" || 
+			   r.URL.Path == "/api/metrics" || 
+			   r.URL.Path == "/api/logout" ||
+			   r.URL.Path == "/api/backends" ||
+			   r.URL.Path == "/api/backends/add" ||
+			   r.URL.Path == "/api/backends/remove" {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 
