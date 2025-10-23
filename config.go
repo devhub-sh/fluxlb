@@ -3,21 +3,25 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"time"
 )
 
-type BackendConfig struct {
-	URL string `json:"url"`
-}
+// Config represents the load balancer configuration
 type Config struct {
 	Port                int             `json:"port"`
 	HealthCheckPath     string          `json:"health_check_path"`
-	HealthCheckInterval int             `json:"health_check_interval"`
+	HealthCheckInterval time.Duration   `json:"health_check_interval_seconds"`
 	Backends            []BackendConfig `json:"backends"`
 }
 
+// BackendConfig represents a backend server configuration
+type BackendConfig struct {
+	URL string `json:"url"`
+}
+
+// LoadConfig loads configuration from a JSON file
 func LoadConfig(filepath string) (*Config, error) {
 	file, err := os.Open(filepath)
-
 	if err != nil {
 		return nil, err
 	}
@@ -29,6 +33,8 @@ func LoadConfig(filepath string) (*Config, error) {
 		return nil, err
 	}
 
-	// config.HealthCheckInterval = config.HealthCheckInterval * time.Second
+	// Convert seconds to duration
+	config.HealthCheckInterval = config.HealthCheckInterval * time.Second
+
 	return &config, nil
 }

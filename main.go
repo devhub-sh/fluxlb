@@ -38,7 +38,21 @@ func main() {
 			* with backends from configuration
 	*/
 
-	// TODO: Initialize load balancer here
+	lb, err := NewLoadBalancer(config)
+	if err != nil {
+		log.Fatalf("Failed to create load balancer: %v", err)
+	}
+
+	dashboard, err := NewDashboard(lb)
+	if err != nil {
+		log.Fatalf("Failed to create dashboard: %v", err)
+	}
+
+	// Create context for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	lb.Start(ctx)
 
 	/*
 		 * @ Start HTTP server
@@ -49,6 +63,9 @@ func main() {
 			* using round-robin algorithm
 	*/
 	mux := http.NewServeMux()
+	mux.HandleFunc("/dashboard", dashboard.ServeHTTP)
+	mux.HandleFunc("/api/metrics", dashboard.ServeMetricsAPI)
+	mux.HandleFunc("/", lb.ServeHTTP)
 	mux.HandleFunc("/health", HealthCheckHandler)
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", config.Port),
@@ -78,6 +95,7 @@ func main() {
 	signal.Notify(signChan, os.Interrupt, syscall.SIGTERM)
 	<-signChan
 
+	cancel()
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
@@ -86,5 +104,4 @@ func main() {
 	}
 
 	log.Println("FluxLB stopped")
-
 }
