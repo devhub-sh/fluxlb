@@ -87,6 +87,14 @@ func (hc *HealthChecker) RemoveBackend(backend *Backend) {
 // check performs a health check on a single backend
 func (hc *HealthChecker) check(backend *Backend) {
 	url := backend.URL.String() + hc.path
+	
+	// Validate URL scheme to prevent SSRF attacks
+	if backend.URL.Scheme != "http" && backend.URL.Scheme != "https" {
+		backend.SetAlive(false)
+		log.Printf("Backend %s has invalid scheme: %s", backend.URL.String(), backend.URL.Scheme)
+		return
+	}
+	
 	client := &http.Client{
 		Timeout: 5 * time.Second,
 	}

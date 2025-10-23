@@ -73,7 +73,7 @@ func (lb *LoadBalancer) GetNextBackend() *Backend {
 		// Score = (time_quanta * connections) + avg_latency
 		timeQuanta := float64(backend.GetTimeQuanta().Nanoseconds())
 		connections := float64(backend.GetActiveConnections())
-		avgLatency := float64(backend.GetMertics().AvgLatency.Nanoseconds())
+		avgLatency := float64(backend.GetMetrics().AvgLatency.Nanoseconds())
 
 		score := (timeQuanta * (1 + connections)) + avgLatency
 
@@ -129,7 +129,7 @@ func (lb *LoadBalancer) GetMetrics() []BackendMetrics {
 
 	metrics := make([]BackendMetrics, 0, len(lb.backends))
 	for _, backend := range lb.backends {
-		metrics = append(metrics, backend.GetMertics())
+		metrics = append(metrics, backend.GetMetrics())
 	}
 	return metrics
 }

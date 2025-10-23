@@ -85,7 +85,7 @@ func (b *Backend) IsAlive() bool {
 
 /*
  * @ Updates the backend's metrics
- * Add request increments the rtequest count and latency
+ * Add request increments the request count and latency
  */
 
 func (b *Backend) AddRequest(latency time.Duration) {
@@ -119,7 +119,7 @@ func (b *Backend) DecrementConnections() {
 	}
 }
 
-func (b *Backend) GetMertics() BackendMetrics {
+func (b *Backend) GetMetrics() BackendMetrics {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 

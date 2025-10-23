@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 )
 
 // APIHandler handles API requests for the load balancer
@@ -130,6 +131,29 @@ func (api *APIHandler) HandleAddBackend(w http.ResponseWriter, r *http.Request) 
 		json.NewEncoder(w).Encode(Response{
 			Success: false,
 			Message: "Invalid request",
+		})
+		return
+	}
+
+	// Validate URL format and scheme
+	parsedURL, err := url.Parse(req.URL)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid URL format",
+		})
+		return
+	}
+
+	// Only allow http and https schemes to prevent SSRF
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid URL scheme. Only http and https are allowed",
 		})
 		return
 	}
