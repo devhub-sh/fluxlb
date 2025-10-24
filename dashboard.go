@@ -299,9 +299,9 @@ const dashboardHTML = `
 
 // Dashboard provides the web dashboard for monitoring
 type Dashboard struct {
-	lb             *LoadBalancer
-	dashboardTmpl  *template.Template
-	loginTmpl      *template.Template
+	lb            *LoadBalancer
+	dashboardTmpl *template.Template
+	loginTmpl     *template.Template
 }
 
 // NewDashboard creates a new dashboard instance
