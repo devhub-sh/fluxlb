@@ -60,8 +60,9 @@ func (lb *LoadBalancer) GetNextBackend() *Backend {
 		return nil
 	}
 
-	// Find the backend with the smallest time quanta and active connections
-	var bestBackend *Backend
+	// Find backends with the smallest score
+	// Include backends within 20% of the best score for fair distribution
+	var bestBackends []*Backend
 	var bestScore float64 = -1
 
 	for _, backend := range lb.backends {
@@ -70,35 +71,56 @@ func (lb *LoadBalancer) GetNextBackend() *Backend {
 		}
 
 		// Calculate score: lower is better
-		// Score = (time_quanta * connections) + avg_latency
+		// Score = (time_quanta * (1 + connections)) + avg_latency
 		timeQuanta := float64(backend.GetTimeQuanta().Nanoseconds())
 		connections := float64(backend.GetActiveConnections())
 		avgLatency := float64(backend.GetMetrics().AvgLatency.Nanoseconds())
 
 		score := (timeQuanta * (1 + connections)) + avgLatency
 
-		if bestBackend == nil || score < bestScore {
-			bestBackend = backend
+		if bestScore == -1 || score < bestScore {
 			bestScore = score
 		}
 	}
 
-	// Fallback to simple round-robin if all backends are down
-	if bestBackend == nil {
-		for i := 0; i < len(lb.backends); i++ {
-			idx := atomic.AddUint64(&lb.current, 1) % uint64(len(lb.backends))
-			backend := lb.backends[idx]
-			if backend.IsAlive() {
-				return backend
-			}
+	// Collect all backends within 20% of the best score
+	threshold := bestScore * 1.2
+	for _, backend := range lb.backends {
+		if !backend.IsAlive() {
+			continue
 		}
-		// Return first backend as last resort
-		if len(lb.backends) > 0 {
-			return lb.backends[0]
+
+		timeQuanta := float64(backend.GetTimeQuanta().Nanoseconds())
+		connections := float64(backend.GetActiveConnections())
+		avgLatency := float64(backend.GetMetrics().AvgLatency.Nanoseconds())
+		score := (timeQuanta * (1 + connections)) + avgLatency
+
+		if score <= threshold {
+			bestBackends = append(bestBackends, backend)
 		}
 	}
 
-	return bestBackend
+	// If we have backends with the same best score, use round-robin among them
+	if len(bestBackends) > 0 {
+		idx := atomic.AddUint64(&lb.current, 1) % uint64(len(bestBackends))
+		return bestBackends[idx]
+	}
+
+	// Fallback to simple round-robin if all backends are down
+	for i := 0; i < len(lb.backends); i++ {
+		idx := atomic.AddUint64(&lb.current, 1) % uint64(len(lb.backends))
+		backend := lb.backends[idx]
+		if backend.IsAlive() {
+			return backend
+		}
+	}
+
+	// Return first backend as last resort
+	if len(lb.backends) > 0 {
+		return lb.backends[0]
+	}
+
+	return nil
 }
 
 // ServeHTTP handles incoming requests

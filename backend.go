@@ -151,11 +151,7 @@ func (b *Backend) GetMetrics() BackendMetrics {
 func (b *Backend) GetTimeQuanta() time.Duration {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-
-	if b.TimeQuanta == 0 {
-		return time.Millisecond * 100 // Default
-	}
-	return b.TimeQuanta
+	return b.TimeQuanta // Return 0 if no requests yet
 }
 
 func (b *Backend) GetActiveConnections() int64 {
